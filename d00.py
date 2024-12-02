@@ -1,7 +1,11 @@
 from pathlib import Path
 
 
-def do(data: list[str]):
+def do1(data: list[str]):
+    print("done")
+
+
+def do2(data: list[str]):
     print("done")
 
 
@@ -13,7 +17,7 @@ def wrapper():
         data = f.readlines()
     data = [x.rstrip() for x in data]
 
-    do(data)
+    do1(data)
 
 
 if __name__ == '__main__':
