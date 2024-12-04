@@ -10,7 +10,7 @@ def do2(data: list[str]):
 
 
 def wrapper():
-    test = False
+    test = True
     ext = "test" if test else ""
 
     with open(f"./data/{Path(__file__).stem}{ext}")as f:
