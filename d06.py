@@ -99,14 +99,14 @@ def do2(data: list[str]):
         x = cur[1]
         y = cur[2]
         direction = cur[3]
-        cur_details = cur[4]
+        cur_details = set(cur[4])
         while True:
             new_details = f"{x},{y},{direction}"
             if new_details in cur_details:
                 total += 1
                 break
             else:
-                cur_details.append(new_details)
+                cur_details.add(new_details)
             newx = x
             newy = y
             if direction == 0:
