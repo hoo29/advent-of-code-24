@@ -71,48 +71,58 @@ def door_moves(pos: list[int], code: str):
     return door_movement
 
 
-def dir_moves(pos: list[int], moves: list[list[str]], back_to_a=True):
+def dir_moves(pos: tuple[int], moves: list[list[str]], cache: dict):
     dir_movement: list[list[str]] = []
     moves_with_a = []
     for m in moves:
         moves_with_a.append(m)
-        if back_to_a:
-            moves_with_a.append(["A"])
-
+        moves_with_a.append(["A"])
+    new_pos = (pos[0], pos[1])
     for seq in moves_with_a:
-        for dest in seq:
-            moves: list[str] = []
-            if dest == "<" and pos[1] == 0:
-                moves.append("v")
-                pos[1] += 1
-                assert not (pos[0] == 0 and pos[1] == 0)
 
-            while pos[0] > dirs[dest][0]:
-                moves.append("<")
-                pos[0] -= 1
-                assert not (pos[0] == 0 and pos[1] == 0)
+        key = f"{new_pos[0], new_pos[1]},{"".join(seq)}"
+        if key in cache:
+            item = cache[key]
+            dir_movement += item[0]
+            new_pos = item[1]
+        else:
+            seq_moves = []
+            for dest in seq:
+                moves: list[str] = []
+                if dest == "<" and new_pos[1] == 0:
+                    moves.append("v")
+                    new_pos = (new_pos[0], new_pos[1] + 1)
+                    assert not (new_pos[0] == 0 and new_pos[1] == 0)
 
-            while pos[1] < dirs[dest][1]:
-                moves.append("v")
-                pos[1] += 1
+                while new_pos[0] > dirs[dest][0]:
+                    moves.append("<")
+                    new_pos = (new_pos[0] - 1, new_pos[1])
+                    assert not (new_pos[0] == 0 and new_pos[1] == 0)
 
-            if pos[0] == 0 and (dest == "A" or dest == "^"):
-                moves.append(">")
-                pos[0] += 1
-                assert not (pos[0] == 0 and pos[1] == 0)
+                while new_pos[1] < dirs[dest][1]:
+                    moves.append("v")
+                    new_pos = (new_pos[0], new_pos[1] + 1)
 
-            while pos[0] < dirs[dest][0]:
-                moves.append(">")
-                pos[0] += 1
-                assert not (pos[0] == 0 and pos[1] == 0)
+                if new_pos[0] == 0 and (dest == "A" or dest == "^"):
+                    moves.append(">")
+                    new_pos = (new_pos[0] + 1, new_pos[1])
+                    assert not (new_pos[0] == 0 and new_pos[1] == 0)
 
-            while pos[1] > dirs[dest][1]:
-                moves.append("^")
-                pos[1] -= 1
-                assert not (pos[0] == 0 and pos[1] == 0)
+                while new_pos[0] < dirs[dest][0]:
+                    moves.append(">")
+                    new_pos = (new_pos[0] + 1, new_pos[1])
+                    assert not (new_pos[0] == 0 and new_pos[1] == 0)
 
-            dir_movement.append(moves)
-    return dir_movement
+                while new_pos[1] > dirs[dest][1]:
+                    moves.append("^")
+                    new_pos = (new_pos[0], new_pos[1] - 1)
+                    assert not (new_pos[0] == 0 and new_pos[1] == 0)
+
+                seq_moves.append(moves)
+
+            dir_movement += seq_moves
+            cache[key] = [seq_moves, new_pos]
+    return [dir_movement, new_pos]
 
 
 def do1(data: list[str]):
@@ -142,7 +152,26 @@ def do1(data: list[str]):
 
 
 def do2(data: list[str]):
-    print("done")
+    ans = 0
+    robot_count = 2
+
+    for code in data:
+        door = [2, 3]
+        door_movement = door_moves(door, code)
+        robots = [(2, 0) for _ in range(robot_count)]
+        last = door_movement
+        cache = {}
+        for ind in range(robot_count):
+            print(ind)
+            last, pos = dir_moves(robots[ind], last, cache)
+            robots[ind] = pos
+
+        move_count = sum([len(x) + 1 for x in last])
+        print(move_count)
+        ans += int(code[:-1]) * move_count
+
+    print()
+    print(ans)
 
 
 def wrapper():
@@ -153,7 +182,7 @@ def wrapper():
         data = f.readlines()
     data = [x.rstrip() for x in data]
 
-    do1(data)
+    do2(data)
 
 
 if __name__ == '__main__':
