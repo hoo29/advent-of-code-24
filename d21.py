@@ -128,6 +128,43 @@ def dir_moves(pos: tuple[int], moves: list[list[str]], cache: dict):
     return (dir_movement, new_pos)
 
 
+dd = [2, 3]
+dr0 = [2, 0]
+dr1 = [2, 0]
+
+
+def debug_the_things(movements: list[str]):
+    _dmoves = {
+        "^": [0, -1],
+        "<": [-1, 0],
+        "v": [0, 1],
+        ">": [1, 0],
+    }
+    for m in movements:
+        dr0[0] += _dmoves[m][0]
+        dr0[1] += _dmoves[m][1]
+    direction = [k for k, v in dirs.items() if v == dr0][0]
+    print(f"robot 0 at {dr0} {direction}")
+    if direction != "A":
+        dr1[0] += _dmoves[direction][0]
+        dr1[1] += _dmoves[direction][1]
+    if direction == "A":
+        print(f"robot 0 presses A")
+
+        direction2 = [k for k, v in dirs.items() if v == dr1][0]
+        print(f"robot 1 at {dr1} {direction2}")
+        if direction2 != "A":
+            dd[0] += _dmoves[direction2][0]
+            dd[1] += _dmoves[direction2][1]
+        num = [k for k, v in numeric.items() if v == dd][0]
+
+        if direction2 == "A":
+            print(f"door pressed {dd} {num}")
+        else:
+            print(f"door at {dd} {num}")
+    print("")
+
+
 def dir_moves2(pos: tuple[int], moves: list[list[str]]):
     dir_movement: list[list[str]] = []
     moves_with_a: list[list[str]] = []
@@ -138,7 +175,7 @@ def dir_moves2(pos: tuple[int], moves: list[list[str]]):
     # if key in cache:
     #     print("cache")
     #     return cache[key]
-    moves_with_a = moves
+    moves_with_a = moves.copy()
     moves_with_a.append(["A"])
 
     for seq in moves_with_a:
@@ -182,50 +219,15 @@ def dir_moves2(pos: tuple[int], moves: list[list[str]]):
     return (dir_movement, new_pos)
 
 
-dd = [2, 3]
-dr0 = [2, 0]
-dr1 = [2, 0]
-
-
-def debug_the_things(movements: list[str]):
-    _dmoves = {
-        "^": [0, -1],
-        "<": [-1, 0],
-        "v": [0, 1],
-        ">": [1, 0],
-    }
-    for m in movements:
-        dr0[0] += _dmoves[m][0]
-        dr0[1] += _dmoves[m][1]
-    direction = [k for k, v in dirs.items() if v == dr0][0]
-    print(f"robot 0 at {dr0} {direction}")
-    if direction != "A":
-        dr1[0] += _dmoves[direction][0]
-        dr1[1] += _dmoves[direction][1]
-    if direction == "A":
-        print(f"robot 0 presses A")
-
-        direction2 = [k for k, v in dirs.items() if v == dr1][0]
-        print(f"robot 1 at {dr1} {direction2}")
-        if direction2 != "A":
-            dd[0] += _dmoves[direction2][0]
-            dd[1] += _dmoves[direction2][1]
-        num = [k for k, v in numeric.items() if v == dd][0]
-
-        if direction2 == "A":
-            print(f"door pressed {dd} {num}")
-        else:
-            print(f"door at {dd} {num}")
-    print("")
-
-
 def do2(data: list[str]):
     ans = 0
-    robot_count = 4
+    robot_count = 7
     better_cache = {}
     count = 0
     another_cache_for_some_reason = defaultdict(int)
-    for code in data[2:3]:
+    cache_count = 0
+    c = [data[1]]
+    for code in c:
         door = [2, 3]
         door_movement = door_moves(door, code)
         q = deque()
@@ -245,7 +247,7 @@ def do2(data: list[str]):
                     seq = other_h[1]
                     pp = other_h[2]
                     key = f"{p},{pp[0]},{pp[1]},{
-                        "".join([str(x) for x in seq if x != ["A"]])}"
+                        "".join([str(x) for x in seq])}"
                     another_cache_for_some_reason[key] += len(movements) + 1
                 for sub_ind in range(robot_count - 1, -1, -1):
                     if q and q[0][0] < sub_ind:
@@ -254,25 +256,17 @@ def do2(data: list[str]):
                         seq = h[1]
                         pp = h[2]
                         key = f"{p},{pp[0]},{pp[1]},{
-                            "".join([str(x) for x in seq if x != ["A"]])}"
-                        if another_cache_for_some_reason[key] == 0:
-                            raise Exception("damn")
+                            "".join([str(x) for x in seq])}"
                         better_cache[key] = another_cache_for_some_reason[key]
-                # for h in item[2]:
-                #     ind = h[0]
-                #     seq = h[1]
-                #     p = h[2]
-                #     key = f"{ind},{p[0]},{p[1]},{"".join([str(x)
-                #                                           for x in seq if x != ["A"]])}"
-                #     better_cache[key] = len(movements) + 1
+                        del another_cache_for_some_reason[key]
                 continue
             original_pos = robots[ind]
             key = f"{ind},{original_pos[0]},{original_pos[1]},{
                 "".join([str(x) for x in movements])}"
             if key in better_cache:
-                print(f"cache key {key}")
-                count += better_cache[key]
-                continue
+                # print(f"cache hit {key}")
+                cache_count = better_cache[key] + count
+                # continue
 
             last, pos = dir_moves2(original_pos, movements)
             for l in reversed(last):
@@ -282,7 +276,7 @@ def do2(data: list[str]):
 
             robots[ind] = pos
 
-    for code in data[2:3]:
+    for code in c:
         door = [2, 3]
         door_movement = door_moves(door, code)
         robots = [(2, 0) for _ in range(robot_count)]
@@ -297,8 +291,9 @@ def do2(data: list[str]):
         ans += int(code[:-1]) * move_count
 
     print(f"new - {count}")
+    print(f"c - {cache_count}")
     print(f"old - {move_count}")
-    # print()
+    print()
     # print(ans)
 
 
