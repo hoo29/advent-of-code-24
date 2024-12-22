@@ -221,12 +221,13 @@ def dir_moves2(pos: tuple[int], moves: list[list[str]]):
 
 def do2(data: list[str]):
     ans = 0
-    robot_count = 7
+    robot_count = 3
     better_cache = {}
     count = 0
     another_cache_for_some_reason = defaultdict(int)
-    cache_count = 0
-    c = [data[1]]
+    c = [data[0]]
+    out1 = ""
+    out2 = ""
     for code in c:
         door = [2, 3]
         door_movement = door_moves(door, code)
@@ -241,32 +242,32 @@ def do2(data: list[str]):
             ind = item[0]
             movements = item[1]
             if ind == robot_count:
-                count += len(movements) + 1
+                increase = len(movements) + 1
+                count += increase
+                out1 += "".join([str(x) for x in movements])
+                out1 += "A "
                 for other_h in item[2]:
                     p = other_h[0]
                     seq = other_h[1]
-                    pp = other_h[2]
-                    key = f"{p},{pp[0]},{pp[1]},{
-                        "".join([str(x) for x in seq])}"
-                    another_cache_for_some_reason[key] += len(movements) + 1
+                    key = f"{p},{"".join([str(x) for x in seq])}"
+                    another_cache_for_some_reason[key] += increase
+                    if key in better_cache:
+                        print("oh nooooo")
                 for sub_ind in range(robot_count - 1, -1, -1):
                     if q and q[0][0] < sub_ind:
                         h = item[2][sub_ind]
                         p = h[0]
                         seq = h[1]
-                        pp = h[2]
-                        key = f"{p},{pp[0]},{pp[1]},{
-                            "".join([str(x) for x in seq])}"
+                        key = f"{p},{"".join([str(x) for x in seq])}"
                         better_cache[key] = another_cache_for_some_reason[key]
-                        del another_cache_for_some_reason[key]
+                        # del another_cache_for_some_reason[key]
                 continue
             original_pos = robots[ind]
-            key = f"{ind},{original_pos[0]},{original_pos[1]},{
-                "".join([str(x) for x in movements])}"
+            key = f"{ind},{"".join([str(x) for x in movements])}"
             if key in better_cache:
-                # print(f"cache hit {key}")
-                cache_count = better_cache[key] + count
-                # continue
+                print(f"cache hit {key}")
+                count += better_cache[key]
+                continue
 
             last, pos = dir_moves2(original_pos, movements)
             for l in reversed(last):
@@ -286,12 +287,11 @@ def do2(data: list[str]):
             # print(ind)
             last, pos = dir_moves(robots[ind], last, cache)
             robots[ind] = pos
-
+        out2 += "".join([str("".join(x)) + "A " for x in last])
         move_count = sum([len(x) + 1 for x in last])
         ans += int(code[:-1]) * move_count
 
     print(f"new - {count}")
-    print(f"c - {cache_count}")
     print(f"old - {move_count}")
     print()
     # print(ans)
