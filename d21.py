@@ -1,6 +1,6 @@
 from pathlib import Path
-from collections import deque, defaultdict
-from copy import deepcopy
+from itertools import permutations, product
+from functools import cache
 numeric = {
     "A": [2, 3],
     "0": [1, 3],
@@ -22,8 +22,6 @@ dirs = {
     "v": [1, 1],
     ">": [2, 1],
 }
-
-# go left, down, right, up
 
 
 def door_moves(pos: list[int], code: str):
@@ -68,233 +66,77 @@ def door_moves(pos: list[int], code: str):
             pos[1] -= 1
             assert not (pos[0] == 0 and pos[1] == 3)
 
-        # print(moves)
         door_movement.append(moves)
     return door_movement
 
 
-def dir_moves(pos: tuple[int], moves: list[list[str]], cache: dict):
-    dir_movement: list[list[str]] = []
-    moves_with_a: list[list[str]] = []
-
-    key = f"{pos[0]},{pos[1]},{"".join([str(x) for x in moves])}"
-    # key = (pos, tuple(map(tuple, moves)))
+@cache
+def dir_moves3(pos: tuple[int], moves: tuple[str]):
+    dir_movement: list[tuple[tuple[str, ...]]] = []
     new_pos = (pos[0], pos[1])
-    # if key in cache:
-    #     print("cache")
-    #     return cache[key]
+    for seq in (*moves, "A"):
+        seq_moves: list[tuple[tuple[str, ...], ...]] = []
+        for dest in seq:
+            dest_pos = dirs[dest]
+            potential_moves: list[str] = []
+            potential_moves.extend(["<"] * (new_pos[0] - dest_pos[0]))
+            potential_moves.extend([">"] * (dest_pos[0] - new_pos[0]))
+
+            potential_moves.extend(["v"] * (dest_pos[1] - new_pos[1]))
+            potential_moves.extend(["^"] * (new_pos[1] - dest_pos[1]))
+            all_potential_moves = list(set(permutations(potential_moves)))
+            for pm in all_potential_moves:
+                temp_pos = (new_pos[0], new_pos[1])
+                valid = True
+                for pm_move in pm:
+                    if pm_move == "<":
+                        temp_pos = (temp_pos[0] - 1, temp_pos[1])
+                    elif pm_move == ">":
+                        temp_pos = (temp_pos[0] + 1, temp_pos[1])
+                    elif pm_move == "^":
+                        temp_pos = (temp_pos[0], temp_pos[1] - 1)
+                    elif pm_move == "v":
+                        temp_pos = (temp_pos[0], temp_pos[1] + 1)
+                    else:
+                        raise Exception("what")
+                    if temp_pos[0] < 0 or temp_pos[1] < 0:
+                        raise Exception("what")
+                    if temp_pos[0] == 0 and temp_pos[1] == 0:
+                        valid = False
+                        break
+                if valid:
+                    seq_moves.append(pm)
+            new_pos = dest_pos
+        dir_movement.append(tuple(seq_moves))
+        ret = tuple(dir_movement)
+    return (ret, new_pos)
+
+
+@cache
+def search(max_depth: int, depth: int, moves: tuple[tuple[str, ...]]) -> int:
+    count = 0
+    if depth == max_depth:
+        return sum([len(x) + 1 for x in moves])
     for m in moves:
-        moves_with_a.append(m)
-        moves_with_a.append(["A"])
-
-    for seq in moves_with_a:
-        seq_moves = []
-        for dest in seq:
-            sub_moves: list[str] = []
-            if dest == "<" and new_pos[1] == 0:
-                sub_moves.append("v")
-                new_pos = (new_pos[0], new_pos[1] + 1)
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            while new_pos[0] > dirs[dest][0]:
-                sub_moves.append("<")
-                new_pos = (new_pos[0] - 1, new_pos[1])
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            while new_pos[1] < dirs[dest][1]:
-                sub_moves.append("v")
-                new_pos = (new_pos[0], new_pos[1] + 1)
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            if new_pos[0] == 0 and (dest == "A" or dest == "^"):
-                sub_moves.append(">")
-                new_pos = (new_pos[0] + 1, new_pos[1])
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            while new_pos[0] < dirs[dest][0]:
-                sub_moves.append(">")
-                new_pos = (new_pos[0] + 1, new_pos[1])
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            while new_pos[1] > dirs[dest][1]:
-                sub_moves.append("^")
-                new_pos = (new_pos[0], new_pos[1] - 1)
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            seq_moves.append(sub_moves)
-
-        dir_movement += seq_moves
-    cache[key] = (dir_movement, new_pos)
-    return (dir_movement, new_pos)
-
-
-dd = [2, 3]
-dr0 = [2, 0]
-dr1 = [2, 0]
-
-
-def debug_the_things(movements: list[str]):
-    _dmoves = {
-        "^": [0, -1],
-        "<": [-1, 0],
-        "v": [0, 1],
-        ">": [1, 0],
-    }
-    for m in movements:
-        dr0[0] += _dmoves[m][0]
-        dr0[1] += _dmoves[m][1]
-    direction = [k for k, v in dirs.items() if v == dr0][0]
-    print(f"robot 0 at {dr0} {direction}")
-    if direction != "A":
-        dr1[0] += _dmoves[direction][0]
-        dr1[1] += _dmoves[direction][1]
-    if direction == "A":
-        print(f"robot 0 presses A")
-
-        direction2 = [k for k, v in dirs.items() if v == dr1][0]
-        print(f"robot 1 at {dr1} {direction2}")
-        if direction2 != "A":
-            dd[0] += _dmoves[direction2][0]
-            dd[1] += _dmoves[direction2][1]
-        num = [k for k, v in numeric.items() if v == dd][0]
-
-        if direction2 == "A":
-            print(f"door pressed {dd} {num}")
-        else:
-            print(f"door at {dd} {num}")
-    print("")
-
-
-def dir_moves2(pos: tuple[int], moves: list[list[str]]):
-    dir_movement: list[list[str]] = []
-    moves_with_a: list[list[str]] = []
-
-    key = f"{pos[0]},{pos[1]},{"".join([str(x) for x in moves])}"
-    # key = (pos, tuple(map(tuple, moves)))
-    new_pos = (pos[0], pos[1])
-    # if key in cache:
-    #     print("cache")
-    #     return cache[key]
-    moves_with_a = moves.copy()
-    moves_with_a.append(["A"])
-
-    for seq in moves_with_a:
-        seq_moves = []
-        for dest in seq:
-            sub_moves: list[str] = []
-            if dest == "<" and new_pos[1] == 0:
-                sub_moves.append("v")
-                new_pos = (new_pos[0], new_pos[1] + 1)
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            while new_pos[0] > dirs[dest][0]:
-                sub_moves.append("<")
-                new_pos = (new_pos[0] - 1, new_pos[1])
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            while new_pos[1] < dirs[dest][1]:
-                sub_moves.append("v")
-                new_pos = (new_pos[0], new_pos[1] + 1)
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            if new_pos[0] == 0 and (dest == "A" or dest == "^"):
-                sub_moves.append(">")
-                new_pos = (new_pos[0] + 1, new_pos[1])
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            while new_pos[0] < dirs[dest][0]:
-                sub_moves.append(">")
-                new_pos = (new_pos[0] + 1, new_pos[1])
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            while new_pos[1] > dirs[dest][1]:
-                sub_moves.append("^")
-                new_pos = (new_pos[0], new_pos[1] - 1)
-                assert not (new_pos[0] == 0 and new_pos[1] == 0)
-
-            seq_moves.append(sub_moves)
-
-        dir_movement += seq_moves
-    # cache[key] = (dir_movement, new_pos)
-    return (dir_movement, new_pos)
+        next_moves, _ = dir_moves3((2, 0), m)
+        count += min([search(max_depth, depth + 1, x)
+                     for x in product(*next_moves)])
+    return count
 
 
 def do2(data: list[str]):
     ans = 0
-    robot_count = 3
-    better_cache = {}
-    count = 0
-    another_cache_for_some_reason = defaultdict(int)
-    c = [data[0]]
-    out1 = ""
-    out2 = ""
+    robot_count = 25
+    c = data
+    new_ans = 0
     for code in c:
         door = [2, 3]
         door_movement = door_moves(door, code)
-        q = deque()
-        for x in door_movement:
-            q.append((0, x, []))
+        door_movement_tuple = tuple([tuple(x) for x in door_movement])
+        new_count = search(robot_count, 0, door_movement_tuple)
+        new_ans += int(code[:-1]) * new_count
 
-        robots = [(2, 0) for _ in range(robot_count)]
-
-        while q:
-            item = q.popleft()
-            ind = item[0]
-            movements = item[1]
-            if ind == robot_count:
-                increase = len(movements) + 1
-                count += increase
-                out1 += "".join([str(x) for x in movements])
-                out1 += "A "
-                for other_h in item[2]:
-                    p = other_h[0]
-                    seq = other_h[1]
-                    key = f"{p},{"".join([str(x) for x in seq])}"
-                    another_cache_for_some_reason[key] += increase
-                    if key in better_cache:
-                        print("oh nooooo")
-                for sub_ind in range(robot_count - 1, -1, -1):
-                    if q and q[0][0] < sub_ind:
-                        h = item[2][sub_ind]
-                        p = h[0]
-                        seq = h[1]
-                        key = f"{p},{"".join([str(x) for x in seq])}"
-                        better_cache[key] = another_cache_for_some_reason[key]
-                        # del another_cache_for_some_reason[key]
-                continue
-            original_pos = robots[ind]
-            key = f"{ind},{"".join([str(x) for x in movements])}"
-            if key in better_cache:
-                print(f"cache hit {key}")
-                count += better_cache[key]
-                continue
-
-            last, pos = dir_moves2(original_pos, movements)
-            for l in reversed(last):
-                history = deepcopy(item[2])
-                history.append([ind, movements, original_pos])
-                q.appendleft((ind + 1, l, history))
-
-            robots[ind] = pos
-
-    for code in c:
-        door = [2, 3]
-        door_movement = door_moves(door, code)
-        robots = [(2, 0) for _ in range(robot_count)]
-        last = door_movement
-        cache = {}
-        for ind in range(robot_count):
-            # print(ind)
-            last, pos = dir_moves(robots[ind], last, cache)
-            robots[ind] = pos
-        out2 += "".join([str("".join(x)) + "A " for x in last])
-        move_count = sum([len(x) + 1 for x in last])
-        ans += int(code[:-1]) * move_count
-
-    print(f"new - {count}")
-    print(f"old - {move_count}")
-    print()
-    # print(ans)
+    print(new_ans)
 
 
 def do1(data: list[str]):
@@ -324,7 +166,7 @@ def do1(data: list[str]):
 
 
 def wrapper():
-    test = True
+    test = False
     ext = "test" if test else ""
 
     with open(f"./data/{Path(__file__).stem}{ext}")as f:
